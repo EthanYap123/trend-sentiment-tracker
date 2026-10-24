@@ -4,7 +4,7 @@ An automated data pipeline and analytics dashboard that tracks how the tech and 
 
 **Live demo:** https://ethanyap123.github.io/trend-sentiment-tracker/
 
-![Python](https://img.shields.io/badge/Python-3.12-3776ab) ![pandas](https://img.shields.io/badge/pandas-3.1-150458) ![FastAPI](https://img.shields.io/badge/FastAPI-0.162-009688) ![SQLite](https://img.shields.io/badge/SQLite-WAL-003b57) ![Next.js](https://img.shields.io/badge/Next.js-16-000) ![Recharts](https://img.shields.io/badge/Recharts-3-22b5bf) ![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8)
+![Python](https://img.shields.io/badge/Python-3.12-3776ab) ![pandas](https://img.shields.io/badge/pandas-3.1-150458) ![FastAPI](https://img.shields.io/badge/FastAPI-0.162-009688) ![SQLite](https://img.shields.io/badge/SQLite-WAL-003b57) ![Next.js](https://img.shields.io/badge/Next.js-16-000) ![Recharts](https://img.shields.io/badge/Recharts-3-22b5bf) ![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) [![Pipeline](https://github.com/EthanYap123/trend-sentiment-tracker/actions/workflows/pipeline.yml/badge.svg)](https://github.com/EthanYap123/trend-sentiment-tracker/actions/workflows/pipeline.yml)
 
 ## Features
 
