@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+
+# pipeline output: the database lives on the `data` branch in CI,
+# and the snapshot is rebuilt from it on every deploy
+data/
+dashboard/public/data/
+
+dashboard/node_modules/
+dashboard/.next/
+dashboard/out/

@@ -1,0 +1,22 @@
+{
+  "name": "trend-sentiment-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:demo": "cross-env NEXT_PUBLIC_DATA_SOURCE=static next dev",
+    "build": "next build",
+    "build:demo": "cross-env NEXT_PUBLIC_DATA_SOURCE=static NEXT_PUBLIC_BASE_PATH=/trend-sentiment-tracker next build"
+  },
+  "dependencies": {
+    "next": "16.4.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "recharts": "3.10.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "cross-env": "7.0.3",
+    "tailwindcss": "4.3.3"
+  }
+}

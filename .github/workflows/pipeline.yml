@@ -1,0 +1,117 @@
+name: Pipeline and deploy
+
+# Every 6 hours: run the ETL pipeline against the stored database, save the
+# database back to the `data` branch, and redeploy the dashboard to Pages with
+# a fresh snapshot. Pushes to main and manual runs do the same.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      backfill_days:
+        description: "Rebuild history from scratch for this many days (leave empty for a normal run)"
+        required: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pip install -r requirements-dev.txt
+      # Includes the parity test that runs the dashboard's JS analytics in Node.
+      - run: python -m pytest -q
+
+  pipeline:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      TRACKER_DB: data/tracker.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+
+      - name: Restore database from the data branch
+        run: |
+          mkdir -p data
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            git show origin/data:tracker.db > data/tracker.db
+            echo "Restored $(du -h data/tracker.db | cut -f1) database"
+          else
+            echo "No data branch yet; the first run backfills history"
+          fi
+
+      - name: Extract, transform, load
+        run: |
+          DAYS="${{ github.event.inputs.backfill_days }}"
+          if [ -n "$DAYS" ]; then
+            rm -f data/tracker.db
+            python -m pipeline.run --backfill "$DAYS" --trigger ci
+          elif [ ! -s data/tracker.db ]; then
+            python -m pipeline.run --backfill 90 --trigger ci
+          else
+            python -m pipeline.run --trigger ci
+          fi
+
+      - name: Save database to the data branch
+        # A single orphan commit, force-pushed, so binary history never piles up.
+        run: |
+          tmp=$(mktemp -d)
+          cp data/tracker.db "$tmp/"
+          cd "$tmp"
+          git init -q -b data
+          git add tracker.db
+          git -c user.name="${{ github.repository_owner }}" \
+              -c user.email="209574022+${{ github.repository_owner }}@users.noreply.github.com" \
+              commit -q -m "Pipeline data $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
+
+      - name: Export dashboard snapshot
+        run: python -m pipeline.run --export-only
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Build static dashboard
+        working-directory: dashboard
+        run: npm ci && npm run build:demo
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard/out
+
+  deploy:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

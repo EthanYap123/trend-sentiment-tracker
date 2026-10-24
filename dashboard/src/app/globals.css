@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+/* Colour roles. Charts and UI reference these, never raw hex, so dark mode
+   swaps in one place. Dark values are their own steps, not an inversion. */
+:root {
+  color-scheme: light;
+  --page: #f6f6f3;
+  --surface: #fcfcfb;
+  --surface-2: #f1f0ec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #7c7a74;
+  --grid: #e6e5df;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --accent: #2a78d6;
+  --accent-ink: #1c5cab;
+
+  /* categorical slots (sector comparison), fixed order */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+
+  /* diverging polarity: blue <-> grey <-> red */
+  --positive: #2a78d6;
+  --neutral: #b4b2a9;
+  --negative: #e34948;
+
+  /* status (pipeline runs) - always shown with an icon and label */
+  --good: #0ca30c;
+  --warning: #c98500;
+  --critical: #d03b3b;
+  --good-ink: #006300;
+  --critical-ink: #b42525;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #232321;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #94928b;
+    --grid: #2c2c2a;
+    --axis: #44443f;
+    --border: rgba(255, 255, 255, 0.1);
+    --accent: #3987e5;
+    --accent-ink: #86b6ef;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --positive: #3987e5;
+    --neutral: #6b6a64;
+    --negative: #e66767;
+    --good: #0ca30c;
+    --warning: #fab219;
+    --critical: #e66767;
+    --good-ink: #3fc23f;
+    --critical-ink: #f08a8a;
+  }
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-grid: var(--grid);
+  --color-line: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-positive: var(--positive);
+  --color-neutral: var(--neutral);
+  --color-negative: var(--negative);
+  --color-good: var(--good);
+  --color-warning: var(--warning);
+  --color-critical: var(--critical);
+  --color-good-ink: var(--good-ink);
+  --color-critical-ink: var(--critical-ink);
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html {
+  background: var(--page);
+}
+
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Recharts focus outline on click is noisy; keyboard users get the table views. */
+.recharts-wrapper *:focus {
+  outline: none;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+}
+@media (prefers-color-scheme: dark) {
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+}
