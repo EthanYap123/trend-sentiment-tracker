@@ -171,6 +171,13 @@ tests/             pytest suite + parity.mjs
 - RSS feeds only expose their latest 10 to 50 items, so their history starts from the first pipeline run; Hacker News and DEV.to are backfilled.
 - GitHub pauses scheduled workflows in repositories with no activity for 60 days; re-enable the workflow from the Actions tab if that happens.
 
+## What I learned
+
+- **Generic sentiment tools don't understand tech.** VADER scored "kill", "hack" and "panic" as negative, but in tech news they're usually neutral ("kill switch", "hackathon", "kernel panic"). I removed that jargon and added a tech and markets dictionary.
+- **Real data is mostly cleaning.** The same story shows up under different links with tracking parameters, so I canonicalise URLs and also de-duplicate by headline. That took more code than the sentiment scoring.
+- **Pipelines must survive partial failure.** One dead RSS feed shouldn't kill the whole run, so each source fails on its own and the run is logged as `partial`.
+- **Two implementations means two chances to drift.** The Pages demo answers queries in JavaScript while the API uses Python, so I wrote a parity test that fails if they ever give different results.
+
 ## License
 
 MIT
