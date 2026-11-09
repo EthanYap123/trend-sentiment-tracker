@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -93,8 +93,9 @@ def test_rescore_updates_rows_from_older_versions(tmp_path):
 
 
 def test_run_pipeline_logs_partial_failures(tmp_path, monkeypatch):
+    # run_pipeline prunes against the real clock, so date the rows from today.
     def fake_extract(hn_since, devto_days):
-        return synthetic_rows(30), {"Hacker News": 30, "Wired": 0}, {"Wired": "HTTPError: 503"}
+        return synthetic_rows(30, now=datetime.now(timezone.utc)), {"Hacker News": 30, "Wired": 0}, {"Wired": "HTTPError: 503"}
 
     monkeypatch.setattr(run, "extract", fake_extract)
     result = run.run_pipeline("test", db_path=tmp_path / "t.db")
