@@ -6,6 +6,8 @@ An automated data pipeline and analytics dashboard that tracks how the tech and 
 
 ![Python](https://img.shields.io/badge/Python-3.12-3776ab) ![pandas](https://img.shields.io/badge/pandas-3.1-150458) ![FastAPI](https://img.shields.io/badge/FastAPI-0.162-009688) ![SQLite](https://img.shields.io/badge/SQLite-WAL-003b57) ![Next.js](https://img.shields.io/badge/Next.js-16-000) ![Recharts](https://img.shields.io/badge/Recharts-3-22b5bf) ![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) [![Pipeline](https://github.com/EthanYap123/trend-sentiment-tracker/actions/workflows/pipeline.yml/badge.svg)](https://github.com/EthanYap123/trend-sentiment-tracker/actions/workflows/pipeline.yml)
 
+![Dashboard with KPI cards, a sentiment-over-time chart, daily volume by polarity and the top trending keywords](docs/screenshot.jpg)
+
 ## Features
 
 - **Scheduled ETL pipeline** in Python: extract from 8 public sources, transform with pandas, load into SQLite, with every run logged (row counts, duplicates dropped, per-source failures, duration).
@@ -15,33 +17,20 @@ An automated data pipeline and analytics dashboard that tracks how the tech and 
 - **Two schedulers**: APScheduler inside the API process for local or server runs, and a GitHub Actions cron that keeps the public demo fresh.
 - **Interactive dashboard**: KPI tiles with period-over-period deltas, a sentiment trend with a 7-day volume-weighted average, daily volume by polarity, sector breakdown, a three-way sector comparison, trending keywords with momentum, a searchable paginated data log and the pipeline run history. Filter by date range (7/30/90 days or custom), sector, source and polarity; filters are kept in the URL so views can be shared. Works in light and dark mode and down to phone width.
 
+## Tech stack
+
+| Layer | Tools |
+| --- | --- |
+| Pipeline | Python 3.12, pandas, requests, feedparser |
+| Sentiment | VADER word list plus a tech and markets dictionary |
+| Storage | SQLite (kept on an orphan `data` branch between runs) |
+| API | FastAPI, APScheduler |
+| Dashboard | Next.js 16, Recharts, Tailwind CSS |
+| Testing and CI | pytest (including a Python/JavaScript parity test), GitHub Actions, GitHub Pages |
+
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph Sources["Public sources (no API keys)"]
-        HN["Hacker News<br/>Algolia API"]
-        DEV["DEV.to API"]
-        RSS["RSS: TechCrunch, The Verge,<br/>Ars Technica, CNBC Tech,<br/>Wired, Engadget"]
-    end
-
-    subgraph Pipeline["pipeline/ (Python)"]
-        E["Extract<br/>sources.py"]
-        T["Transform<br/>transform.py (pandas)<br/>sentiment.py"]
-        L["Load<br/>db.py"]
-        E --> T --> L
-    end
-
-    DB[("SQLite<br/>articles<br/>article_keywords<br/>pipeline_runs")]
-    API["FastAPI<br/>api/main.py<br/>+ APScheduler"]
-    SNAP["snapshot.json<br/>export.py"]
-    DASH["Next.js dashboard<br/>Recharts + Tailwind"]
-
-    HN & DEV & RSS --> E
-    L --> DB
-    DB --> API -->|"api mode"| DASH
-    DB --> SNAP -->|"static mode<br/>(GitHub Pages)"| DASH
-```
+![Architecture: a six-hourly GitHub Actions cron restores SQLite from the data branch, runs the Python ETL pipeline, saves the database back and deploys the static Next.js dashboard to GitHub Pages; locally FastAPI serves the same queries](docs/architecture.svg)
 
 The dashboard talks to one data interface ([`dashboard/src/lib/data.js`](dashboard/src/lib/data.js)) with two backends:
 
@@ -115,7 +104,18 @@ Interactive docs at `/docs` when the server is running. Every analytics endpoint
 | GET | `/api/pipeline/schedule` | Scheduler state and next run time |
 | POST | `/api/pipeline/run` | Starts a run in the background (409 if one is already running; set `PIPELINE_TOKEN` to require an `X-Pipeline-Token` header) |
 
-## Running locally
+## Project layout
+
+```
+pipeline/          ETL: config, sources (extract), transform, sentiment, db (load),
+                   analytics (queries), export (static snapshot), run (CLI + lock)
+api/main.py        FastAPI app, scheduler, serves dashboard/out
+dashboard/         Next.js 16 static-export dashboard (Recharts, Tailwind 4)
+tests/             pytest suite + parity.mjs
+.github/workflows/ Scheduled pipeline, database persistence and Pages deploy
+```
+
+## Getting started
 
 Requires Python 3.12 and Node 22.
 
@@ -137,6 +137,8 @@ Open http://localhost:8000 for the dashboard and http://localhost:8000/docs for 
 
 For dashboard development with hot reload, keep the API running and use `npm run dev` in `dashboard/` (it points at `http://localhost:8000`). To work on the static Pages build instead, export a snapshot with `python -m pipeline.run --export-only` and run `npm run dev:demo`.
 
+These are read from the environment. Set them in your shell, or copy [`.env.example`](.env.example) to `.env` and add `--env-file .env` to the `uvicorn` command.
+
 | Variable | Default | Purpose |
 |---|---|---|
 | `TRACKER_DB` | `data/tracker.db` | SQLite file |
@@ -145,7 +147,7 @@ For dashboard development with hot reload, keep the API running and use `npm run
 | `PIPELINE_TOKEN` | unset | Require this token to trigger runs over HTTP |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated origins allowed to call the API |
 
-## Tests
+## Testing
 
 ```bash
 python -m pytest
@@ -153,16 +155,15 @@ python -m pytest
 
 26 tests cover sentiment rules (negation, intensifiers, phrases, tech jargon), cleaning and de-duplication, URL canonicalisation, sector and keyword tagging, idempotent upserts, re-scoring, partial-failure logging, the run lock, every API endpoint and its validation, and the Python/JavaScript parity check. The parity test needs Node on the PATH. CI runs the suite before every pipeline run and deploy.
 
-## Project layout
+## CI and deployment
 
-```
-pipeline/          ETL: config, sources (extract), transform, sentiment, db (load),
-                   analytics (queries), export (static snapshot), run (CLI + lock)
-api/main.py        FastAPI app, scheduler, serves dashboard/out
-dashboard/         Next.js 16 static-export dashboard (Recharts, Tailwind 4)
-tests/             pytest suite + parity.mjs
-.github/workflows/ Scheduled pipeline, database persistence and Pages deploy
-```
+[`.github/workflows/pipeline.yml`](.github/workflows/pipeline.yml) runs every six hours, on every push to `main` and on demand (with an optional backfill). It has three jobs:
+
+1. **Test:** the full pytest suite, including the parity test (needs Node). A failure stops the run before any data or deploy changes.
+2. **Pipeline:** restore `tracker.db` from the `data` branch, extract, transform and load, save the database back as a single force-pushed commit, export `snapshot.json` and build the static dashboard.
+3. **Deploy:** publish the dashboard to GitHub Pages.
+
+There is no server to host: the data lives on a branch, the compute is GitHub Actions and the site is GitHub Pages.
 
 ## Limitations
 
@@ -170,6 +171,12 @@ tests/             pytest suite + parity.mjs
 - Sector and keyword tags come from dictionaries, so roughly half of Hacker News's long tail lands in "General Tech".
 - RSS feeds only expose their latest 10 to 50 items, so their history starts from the first pipeline run; Hacker News and DEV.to are backfilled.
 - GitHub pauses scheduled workflows in repositories with no activity for 60 days; re-enable the workflow from the Actions tab if that happens.
+
+## What I'd improve next
+
+- Run the tests on pull requests too, so a change is checked before it reaches `main` rather than on the next scheduled run.
+- Improve sector tagging, since dictionary matching leaves about half of Hacker News's long tail in "General Tech".
+- Keep the schedule alive: GitHub pauses scheduled workflows in repositories with no activity for 60 days.
 
 ## What I learned
 
