@@ -28,12 +28,12 @@ PREDICATES = [
 SOURCES = [("Hacker News", "api"), ("DEV.to", "api"), ("TechCrunch", "rss"), ("Wired", "rss")]
 
 
-def synthetic_rows(n: int = 600, days: int = 75, seed: int = 7) -> list[dict]:
+def synthetic_rows(n: int = 600, days: int = 75, seed: int = 7, now: datetime = NOW) -> list[dict]:
     rng = random.Random(seed)
     rows = []
     for i in range(n):
         source, kind = rng.choice(SOURCES)
-        published = NOW - timedelta(minutes=rng.randrange(days * 24 * 60))
+        published = now - timedelta(minutes=rng.randrange(days * 24 * 60))
         rows.append({
             "source": source,
             "source_type": kind,
